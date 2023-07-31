@@ -1,107 +1,97 @@
 import os
 from utils.tools import save_pred_picture, load_pred_data
 from models.faultseg3d import FaultSeg3D
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
+from tqdm import tqdm
+from scipy.ndimage import gaussian_filter
 
 
-# set gaussian weights in the overlap bounaries
-# 在重叠边界中设置高斯权重
-def getMask(overlap, n1, n2, n3):
-    sc = np.zeros((n1, n2, n3), dtype=np.single)
-    sc = sc + 1
-    sp = np.zeros((overlap), dtype=np.single)
-    sig = overlap / 4
-    sig = 0.5 / (sig * sig)
-    for ks in range(overlap):
-        ds = ks - overlap + 1
-        sp[ks] = np.exp(-ds * ds * sig)
-    for k1 in range(overlap):
-        for k2 in range(n2):
-            for k3 in range(n3):
-                sc[k1][k2][k3] = sp[k1]
-                sc[n1 - k1 - 1][k2][k3] = sp[k1]
-    for k1 in range(n1):
-        for k2 in range(overlap):
-            for k3 in range(n3):
-                sc[k1][k2][k3] = sp[k2]
-                sc[k1][n3 - k2 - 1][k3] = sp[k2]
-    for k1 in range(n1):
-        for k2 in range(n2):
-            for k3 in range(overlap):
-                sc[k1][k2][k3] = sp[k3]
-                sc[k1][k2][n3 - k3 - 1] = sp[k3]
-    # return np.transpose(sc)
-    return sc
+def sliding_window_prediction(input_data, block_size, overlap, model, args):
+    # 输入数据的尺寸
+    input_shape = input_data.shape
+    # 切块大小和步长
+    block_shape = np.array(block_size)
+    step = (1 - overlap) * block_shape
+
+    # 计算需要切割成的块数
+    num_blocks = np.ceil(input_shape / step).astype(int)
+
+    # 初始化预测结果和权重矩阵
+    sliding_shape = np.array(((num_blocks[0] - 1) * step[0] + block_shape[0],
+                              (num_blocks[1] - 1) * step[1] + block_shape[1],
+                              (num_blocks[2] - 1) * step[2] + block_shape[2])).astype(int)
+
+    sliding_data = np.zeros(sliding_shape)
+
+    sliding_data[0:input_shape[0], 0:input_shape[1], 0:input_shape[2]] = input_data
+
+    output = np.zeros(sliding_shape)
+    weight_map = np.zeros(sliding_shape)
+
+    total_iterations = num_blocks[0] * num_blocks[1] * num_blocks[2]
+    progress_bar = tqdm(total=total_iterations, desc='[Pred]', unit='it')
+
+    # 滑动窗口切块和预测
+    for i in range(num_blocks[0]):
+        for j in range(num_blocks[1]):
+            for k in range(num_blocks[2]):
+                # 计算当前块的起始和结束位置
+                start = (step * np.array([i, j, k])).astype(int)
+                end = (start + block_shape).astype(int)
+                # 裁剪当前块的数据
+                block = sliding_data[start[0]:end[0], start[1]:end[1], start[2]:end[2]]
+                block = block.reshape((1, 1, block.shape[0], block.shape[1], block.shape[2]))
+
+                block_mean = np.mean(block)
+                block_std = np.std(block)
+                block_normal = (block - block_mean) / block_std
+
+                input_block = torch.from_numpy(block_normal).to(args.device).float()
+
+                block_prediction = model(input_block)
+
+                block_prediction = block_prediction[:, 1, :, :, :]
+                # block_prediction = block_prediction.argmax(axis=1)
+                block_prediction = block_prediction.detach().cpu().numpy()
+                block_prediction = np.squeeze(block_prediction)
+
+                # 计算当前块的权重矩阵
+                weight_map[start[0]:end[0], start[1]:end[1], start[2]:end[2]] += 1
+
+                # 将当前块的预测结果叠加到输出中
+                output[start[0]:end[0], start[1]:end[1], start[2]:end[2]] += block_prediction
+                progress_bar.update(1)
+    progress_bar.close()
+
+    # 根据权重矩阵对预测结果进行归一化
+    output /= weight_map
+
+    # 使用高斯滤波器对边界进行平滑
+    smoothed_output = gaussian_filter(output, sigma=args.sigma)
+
+    return smoothed_output[0:input_shape[0], 0:input_shape[1], 0:input_shape[2]]
 
 
-def pred(args):
-    print("======================= test ==============================")
-    # load and create model
+
+def pred_Gaussian(args):
+    print("============================== pred_Gaussian ==============================")
+    input_data = load_pred_data(args)  # 输入数据
+    block_size = (128, 128, 128)  # 切块大小
+    overlap = args.overlap  # 重叠率
+
+    # 使用训练好的模型进行预测
     model = FaultSeg3D(args.in_channels, args.out_channels).to(args.device)
-
     model_path = './EXP/' + args.exp + '/models/' + args.pretrained_model_name
-
     model.load_state_dict(torch.load(model_path))
     print("Loaded model from disk")
 
-    # training image dimensions
-    n1, n2, n3 = args.window_size
+    # 调用滑动窗口预测函数
+    output_data = sliding_window_prediction(input_data, block_size, overlap, model, args)
 
-    # 加载数据
-    gx = load_pred_data(args)
-    m1, m2, m3 = gx.shape[0], gx.shape[1], gx.shape[2]
-
-    args.overlap = 12  # overlap width
-    c1 = np.round((m1 + args.overlap) / (n1 - args.overlap) + 0.5)
-    c2 = np.round((m2 + args.overlap) / (n2 - args.overlap) + 0.5)
-    c3 = np.round((m3 + args.overlap) / (n3 - args.overlap) + 0.5)
-
-    c1 = int(c1)
-    c2 = int(c2)
-    c3 = int(c3)
-
-    p1 = (n1 - args.overlap) * c1 + args.overlap
-    p2 = (n2 - args.overlap) * c2 + args.overlap
-    p3 = (n3 - args.overlap) * c3 + args.overlap
-
-    gp = np.zeros((p1, p2, p3), dtype=np.single)
-    gy = np.zeros((p1, p2, p3), dtype=np.single)
-    mk = np.zeros((p1, p2, p3), dtype=np.single)
-    gs = np.zeros((1, 1, n1, n2, n3), dtype=np.single)
-    gp[0:m1, 0:m2, 0:m3] = gx
-    sc = getMask(args.overlap, n1, n2, n3)
-
-    print('>>>Start Predicting<<<')
-    count = 0
-    for k3 in range(c3):
-        for k2 in range(c2):
-            for k1 in range(c1):
-                count += 1
-                print('[', count, ' / ', (c1 * c2 * c3), '] ====================================')
-
-                b1 = k1 * n1 - k1 * args.overlap
-                e1 = b1 + n1
-                b2 = k2 * n2 - k2 * args.overlap
-                e2 = b2 + n2
-                b3 = k3 * n3 - k3 * args.overlap
-                e3 = b3 + n3
-                gs[0, 0, :, :, :] = gp[b1:e1, b2:e2, b3:e3]
-                gs_m = np.mean(gs)
-                gs_s = np.std(gs)
-                #
-                gs = (gs - gs_m) / gs_s
-                inputs = torch.from_numpy(gs).to(args.device)
-                y = model(inputs)
-                outputs = y.argmax(axis=1)
-                outputs = outputs.detach().cpu().numpy()
-                outputs = np.squeeze(outputs)
-
-                gy[b1:e1, b2:e2, b3:e3] = gy[b1:e1, b2:e2, b3:e3] + outputs[:, :, :] * sc
-                mk[b1:e1, b2:e2, b3:e3] = mk[b1:e1, b2:e2, b3:e3] + sc
-    gy = gy / mk
-    gy = gy[0:m1, 0:m2, 0:m3]
+    threshold = args.threshold
+    output_data[output_data > threshold] = 1
+    output_data[output_data <= threshold] = 0
 
     print("---Start Save results  ······")
     save_path = './EXP/' + args.exp + '/results/pred/' + args.pred_data_name + '/'
@@ -109,6 +99,7 @@ def pred(args):
         os.makedirs(save_path + '/numpy/')
     if not os.path.exists(save_path + '/picture/'):
         os.makedirs(save_path + '/picture/')
-    np.save(save_path + '/numpy/' + args.pred_data_name + '.npy', gy)
+    np.save(save_path + '/numpy/' + args.pred_data_name + '.npy', output_data)
 
-    save_pred_picture(gx, gy, save_path + '/picture/', args.pred_data_name)
+    save_pred_picture(input_data, output_data, save_path + '/picture/', args.pred_data_name)
+    print("Finish!!!")

@@ -79,7 +79,7 @@ def load_data(args):
 
 def compute_loss(outputs, labels, args):
     if args.loss_func == 'dice':
-        criterion = DiceLoss()
+        criterion = DiceLoss().to(args.device)
         loss = criterion(outputs, labels)
 
         return loss
@@ -141,19 +141,6 @@ def save_train_info(args, train_RESULT, val_RESULT):
     writer_val = pd.ExcelWriter('./EXP/' + args.exp + '/results/train/val_result.xlsx')
     data_df_val.to_excel(writer_val, 'page_1', float_format='%.5f')
     writer_val.save()
-
-
-def select_best_model(args):
-    model_path = './EXP/' + args.exp + '/models/'
-    file_list = os.listdir(model_path)
-    IOU = []
-    for i in range(len(file_list)):
-        temp = str(file_list[i]).split('_')[4]
-        IOU.append(float(temp))
-    IOU_np = np.array(IOU)
-    max_index = np.argmax(IOU_np)
-    print(file_list[max_index])
-    return file_list[max_index]
 
 
 def save_result(args, segs, inputs, gts, val_loss, val_iou, val_dice):
@@ -245,15 +232,13 @@ def save_result(args, segs, inputs, gts, val_loss, val_iou, val_dice):
 
 
 def load_pred_data(args):
-    if args.pred_data_name == 'f3wu':
-        print("Data use f3_Wu.")
-        data, shape_0, shape_1, shape_2 = np.fromfile("./data_pred/f3wu/gxl.dat", dtype=np.single), 512, 384, 128
-        data = np.reshape(data, (shape_0, shape_1, shape_2))
-        data = np.transpose(data)
+    if args.pred_data_name == 'f3':
+        print("Data use f3.")
+        data = np.load('./data_pred/f3/F3_cut.npy')
         return data
     elif args.pred_data_name == 'kerry':
         print("Data use kerry.")
-        data = np.load('./data_pred/kerry//kerry3d_t1152_i640_c256.npy')
+        data = np.load('./data_pred/kerry/kerry3d_t1152_i640_c256.npy')
         return data
     else:
         raise ValueError("Only ['f3', 'kerry'] mode is supported.")

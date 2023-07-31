@@ -1,7 +1,7 @@
 import os
 import torch
 from tqdm import tqdm
-from utils.tools import load_data, compute_loss, con_matrix, save_train_info, select_best_model, save_result
+from utils.tools import load_data, compute_loss, con_matrix, save_train_info, save_result
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.faultseg3d import FaultSeg3D
@@ -42,7 +42,6 @@ def train(args):
     val_RESULT = []
 
     best_iou = 0.0
-    best_model_weights = model.state_dict()
     best_model_name = 'UNET_0.pth'
 
     for epoch in range(args.epochs):
@@ -103,8 +102,8 @@ def train(args):
         if (val_iou / len(val_loader)) > best_iou:
             print("new best ({:.6f} --> {:.6f}). ".format(best_iou, val_iou / len(val_loader)))
             best_iou = val_iou / len(val_loader)
-            best_model_name = 'UNET_epoch_{}_iou_{:.4f}_BEST.pth'.format(epoch + 1, val_iou / len(val_loader))
-            best_model_weights = model.state_dict()
+            best_model_name = 'UNET_BEST.pth'.format(epoch + 1, val_iou / len(val_loader))
+            torch.save(model.state_dict(), model_path + best_model_name)
 
         if (epoch + 1) % args.val_every == 0:
             model_name = 'UNET_epoch_{}_iou_{:.4f}_CP.pth'.format(epoch + 1, val_iou / len(val_loader))  # CP means checkpoints
@@ -113,8 +112,7 @@ def train(args):
         # scheduler.step()
 
     # Save training information
-    model.load_state_dict(best_model_weights)
-    torch.save(model.state_dict(), model_path + best_model_name)
+
     print("---")
     print("Save training information ... ")
     save_train_info(args, train_RESULT, val_RESULT)
@@ -142,12 +140,7 @@ def valid(args, val_loader=None):
     print("Loading Model ... ")
     model = FaultSeg3D(args.in_channels, args.out_channels).to(args.device)
 
-    if args.mode == 'valid_only':
-        model_name = args.pretrained_model_name
-    else:
-        model_name = select_best_model(args)
-
-    model_path = './EXP/' + args.exp + '/models/' + model_name
+    model_path = './EXP/' + args.exp + '/models/' + args.pretrained_model_name
 
     model.load_state_dict(torch.load(model_path))
 

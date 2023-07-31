@@ -7,8 +7,7 @@ FaultSeg3D的pytorch版本
 
 ### 运行
 #### 配置环境
-* torch 1.9.1
-* CUDA 11.1
+* [requirements.txt](./requirements.txt)
 #### Train(默认参数设置与文中相同)
 ```angular2html
 python main.py --mode train --exp [XXX] --train_path [XXX] --valid_path [XXX]
