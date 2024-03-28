@@ -161,7 +161,6 @@ def save_result(args, segs, inputs, gts, val_loss, val_iou, val_dice):
     for i in range(len(inputs)):
 
         seg = segs[i].argmax(axis=1)
-        # seg = segs[i][:, 1, :, :]
         img = inputs[i]
         gt = gts[i]
         seg = np.squeeze(seg)
@@ -234,11 +233,11 @@ def save_result(args, segs, inputs, gts, val_loss, val_iou, val_dice):
 def load_pred_data(args):
     if args.pred_data_name == 'f3':
         print("Data use f3.")
-        data = np.load('./data_pred/f3/F3_cut.npy')
+        data = np.load('f3_data_path')
         return data
     elif args.pred_data_name == 'kerry':
         print("Data use kerry.")
-        data = np.load('./data_pred/kerry/kerry3d_t1152_i640_c256.npy')
+        data = np.load('kerry_data_path')
         return data
     else:
         raise ValueError("Only ['f3', 'kerry'] mode is supported.")

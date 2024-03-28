@@ -96,7 +96,7 @@ class FaultSeg3D(nn.Module):
 
 
 if __name__ == '__main__':
-    # 需要使用device来指定网络在GPU还是CPU运行
+    # 查看网络参数量
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     net = FaultSeg3D(1, 2).to(device)
     summary(net, input_size=(1, 128, 128, 128))

@@ -85,7 +85,7 @@ def pred_Gaussian(args):
     model_path = './EXP/' + args.exp + '/models/' + args.pretrained_model_name
     model.load_state_dict(torch.load(model_path))
     print("Loaded model from disk")
-
+    model.eval()
     # 调用滑动窗口预测函数
     output_data = sliding_window_prediction(input_data, block_size, overlap, model, args)
 

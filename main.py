@@ -24,7 +24,7 @@ def add_args():
     parser.add_argument("--val_every", default=10, type=int, help="validation frequency")
     parser.add_argument("--optim_lr", default=1e-4, type=float, help="optimization learning rate")
     parser.add_argument("--workers", default=0, type=int, help="number of workers")
-    parser.add_argument("--pretrained_model_name", default="UNET_BEST.pth", type=str, help="pretrained model name")
+    parser.add_argument("--pretrained_model_name", default="FaultSeg3D_BEST.pth", type=str, help="pretrained model name")
     parser.add_argument("--pred_data_name", default="f3", choices=['f3', 'kerry'], type=str, help="pretrained data name")
     parser.add_argument('--overlap', default=0.25, type=int, help='pred‘s overlap')
     parser.add_argument('--threshold', default=0.5, type=float, help='Classification threshold')
@@ -57,7 +57,3 @@ def main(args):
 if __name__ == "__main__":
     args = add_args()
     main(args)
-
-
-
-#python main.py --mode train --exp 0627_d800_e50_exp1 --train_path F:/New_Test/FaultData/data_3D_800/train/ --valid_path F:/New_Test/FaultData/data_3D_800/valid/  --epochs 50 --val_every 10

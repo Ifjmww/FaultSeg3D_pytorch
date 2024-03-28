@@ -3,7 +3,6 @@ import torch
 from tqdm import tqdm
 from utils.tools import load_data, compute_loss, con_matrix, save_train_info, save_result
 import torch.optim as optim
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from models.faultseg3d import FaultSeg3D
 import numpy as np
 
@@ -24,7 +23,6 @@ def train(args):
     print("Define optimizer ... ")
 
     optimizer = optim.Adam(model.parameters(), lr=args.optim_lr)
-    # scheduler = CosineAnnealingLR(optimizer, T_max=10, eta_min=0.00001)
 
     # Set model save path   ./EXP/<exp>/models/
     model_path = './EXP/' + args.exp + '/models/'
@@ -42,7 +40,6 @@ def train(args):
     val_RESULT = []
 
     best_iou = 0.0
-    best_model_name = 'UNET_0.pth'
 
     for epoch in range(args.epochs):
 
@@ -102,14 +99,12 @@ def train(args):
         if (val_iou / len(val_loader)) > best_iou:
             print("new best ({:.6f} --> {:.6f}). ".format(best_iou, val_iou / len(val_loader)))
             best_iou = val_iou / len(val_loader)
-            best_model_name = 'UNET_BEST.pth'.format(epoch + 1, val_iou / len(val_loader))
+            best_model_name = 'FaultSeg3D_BEST.pth'.format(epoch + 1, val_iou / len(val_loader))
             torch.save(model.state_dict(), model_path + best_model_name)
 
         if (epoch + 1) % args.val_every == 0:
-            model_name = 'UNET_epoch_{}_iou_{:.4f}_CP.pth'.format(epoch + 1, val_iou / len(val_loader))  # CP means checkpoints
+            model_name = 'FaultSeg3D_epoch_{}_iou_{:.4f}_CP.pth'.format(epoch + 1, val_iou / len(val_loader))  # CP means checkpoints
             torch.save(model.state_dict(), model_path + model_name)
-
-        # scheduler.step()
 
     # Save training information
 
@@ -127,6 +122,7 @@ def train(args):
 
 
 def valid(args, val_loader=None):
+
     device = torch.device(args.device)
     print("---")
     print('Device is :', device)
