@@ -5,8 +5,8 @@ FaultSeg3D的pytorch版本(个人复现结果，如与FaultSeg3D原版代码有�
 
 ![FaultSeg3D网络结构图](/docs/FaultSeg3D.png "FaultSeg3D")
 
-### 运行
-#### 配置环境
+## 运行
+### 配置环境
 * [requirements.txt](./requirements.txt)
 #### Train(默认参数设置与文中相同)
 ```angular2html
@@ -26,6 +26,13 @@ python main.py --mode pred --exp [experiment_name] --pretrained_model_name [Faul
 * 训练集及验证集-200个数据--[百度网盘链接](https://pan.baidu.com/s/10o848E2vMmjmi21xZBFRiw?pwd=i4mo)-提取码:i4mo 
 * 训练集及验证集-800个数据(数据增强)--[百度网盘链接](https://pan.baidu.com/s/1PzsmRt9drnZI9J5GFOk9rw?pwd=zwqf)-提取码:zwqf 
 * 预测集-f3数据--[百度网盘链接](https://pan.baidu.com/s/1iBnW94Yn2U0GQQF3-3pXOA?pwd=0b2j)-提取码:0b2j
+
+
+## 实验结果
+### 合成地震数据断层分割结果
+![合成地震数据断层分割结果](/docs/合成数据结果.png "合成地震数据断层分割结果")
+### 荷兰F3真实地震数据断层分割结果
+![荷兰F3真实地震数据断层分割结果](/docs/F3结果.png "荷兰F3真实地震数据断层分割结果")
 
 ## 归属声明 / Attribution Statement :
 
