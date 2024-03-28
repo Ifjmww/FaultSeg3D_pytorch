@@ -18,7 +18,7 @@ python main.py --mode valid_only --exp [experiment_name] --valid_path [valid_dat
 ```
 #### Prediction(需要有预训练模型)
 ```angular2html
-python main.py --mode pred --exp [experiment_name] --pretrained_model_name [FaultSeg3D_BEST] --pred_data_name [pretrained_model_name] 
+python main.py --mode pred --exp [experiment_name] --pretrained_model_name [FaultSeg3D_BEST.pth] --pred_data_name [pretrained_model_name] 
 ```
 
 ### 训练集、验证集、预测集
